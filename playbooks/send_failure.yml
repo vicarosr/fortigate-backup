@@ -1,0 +1,5 @@
+- name: send message to Discord
+  community.general.discord:
+    webhook_id: "{{id}}"
+    webhook_token: "{{token}}"
+    content: "⚠️  Fortigate Backup failed on *{{inventory_hostname}}*"

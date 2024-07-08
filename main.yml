@@ -1,0 +1,45 @@
+---
+- hosts: fortigate
+  collections:
+    - fortinet.fortios
+  connection: httpapi
+  vars_files:
+    - vars.yml
+  vars:
+    vdom: "root"
+    ansible_httpapi_use_ssl: yes
+    ansible_httpapi_validate_certs: no
+    ansible_httpapi_port: 4444
+    date: "{{ lookup('pipe', 'date +%Y%m%d_%H%M') }}"
+  handlers:
+    - name: Remove
+      shell:
+        cmd: find /home/semaphore/backups/fortigate -mtime +7 -exec rm {} \;
+
+  tasks:
+    - name: Get system status
+      fortinet.fortios.fortios_monitor_fact:
+        vdom: root
+        selector: "system_config_backup"
+        enable_log: yes
+        params:
+          scope: "global"
+      register: backupinfo
+
+    - debug:
+        var: backupinfo
+
+    - name: Save the backup
+      copy:
+        content: "{{ backupinfo.meta.raw }}"
+        dest: "/home/semaphore/backups/fortigate/local_{{ date }}.backup"
+
+    - name: Success
+      include_tasks: playbooks/send_comp_alert.yml
+      tags: always
+      when: backupinfo is defined
+
+    - name: Failed
+      include_tasks: playbooks/send_failure.yml
+      tags: always
+      when: backupinfo is not defined
